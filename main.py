@@ -1,3 +1,4 @@
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -81,17 +82,43 @@ def outputNode(state:GeneralState):
         combined_output += title+"\n\n"+url+"\n\n"+published_date+"\n\n"+revised 
     return {"output":combined_output}
 
+
+import smtplib
+from email.message import EmailMessage
+
+def sendEmailNode(state:GeneralState):
+    email_address = os.getenv("EMAIL_ADDRESS")
+    email_password = os.getenv("EMAIL_PASSWORD")
+
+    msg = EmailMessage()
+    msg['Subject']="The latest AI news today"
+    msg["From"]="ernestdev1993@gmail.com"
+    msg["To"]="linchongtik@gmail.com"
+
+    content = state["output"]
+    msg.set_content(content )
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+        smtp.starttls()
+        smtp.login(email_address, email_password)
+        smtp.send_message(msg)
+
+    print("Email send")
+    pass
+
 tool_builder = StateGraph(GeneralState)
 tool_builder.add_node("input_topic",inputTopicNode)
 tool_builder.add_node("search_online_news", searchOnlineNewsNode)
 tool_builder.add_node("summarize_news", summarizeNode)
 tool_builder.add_node("output",outputNode)
+tool_builder.add_node("sendEmail",sendEmailNode)
 
 tool_builder.add_edge(START, "input_topic")
 tool_builder.add_edge("input_topic", "search_online_news")
 tool_builder.add_edge("search_online_news", "summarize_news")
 tool_builder.add_edge("summarize_news", "output")
-tool_builder.add_edge("output", END)
+tool_builder.add_edge("output", "sendEmail")
+tool_builder.add_edge("sendEmail", END)
 
 tool_graph = tool_builder.compile()
 
