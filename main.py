@@ -14,6 +14,7 @@ from typing_extensions import TypedDict
 class GeneralState(TypedDict):
     topic:str
     context:Annotated[list, operator.add]
+    output:str
     
 
 def inputTopicNode(state:GeneralState):
@@ -25,17 +26,18 @@ from langchain_tavily import TavilySearch
 from data import sample_data
 
 def searchOnlineNewsNode(state:GeneralState):
-    # tool = TavilySearch(max_results=5, topic="news", time_range="day",)
     topic = state["topic"]
+    # tool = TavilySearch(max_results=5, topic="news", time_range="day",)
     # results = tool.invoke({"query":topic})
     # search_result=results["results"]
-    search_result = sample_data["results"]
+    
     # formatted_search_docs = "\n\n---\n\n".join([
     #     f'<Document href="{doc['url']}" published_date="{doc['published_date']}"/>\n{doc['content']}\n</Document>'
     #     for doc in search_result
     # ])
+    search_result = sample_data["results"]
     context=[
-        {"url":doc['url'], "published_date":doc['published_date'], "content":doc['content']}
+        {"title":doc["title"],"url":doc['url'], "published_date":doc['published_date'], "content":doc['content']}
          for doc in search_result
     ]
     return {"context":context}
@@ -70,8 +72,14 @@ def summarizeNode(state:GeneralState):
     pass
 
 def outputNode(state:GeneralState):
-    print("output")
-    pass
+    combined_output = ""
+    for item in state["context"]:
+        title = item.get("title","")
+        published_date = item.get("published_date","")
+        url=item.get("url","")
+        revised = item.get("revised_content","")
+        combined_output += title+"\n\n"+url+"\n\n"+published_date+"\n\n"+revised 
+    return {"output":combined_output}
 
 tool_builder = StateGraph(GeneralState)
 tool_builder.add_node("input_topic",inputTopicNode)
@@ -88,4 +96,4 @@ tool_builder.add_edge("output", END)
 tool_graph = tool_builder.compile()
 
 response = tool_graph.invoke({})
-print(response)
+print(response["output"])
