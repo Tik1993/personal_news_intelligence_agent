@@ -23,24 +23,20 @@ def inputTopicNode(state:GeneralState):
     topic="The latest AI news"
     return {"topic":topic}
 
-from langchain_tavily import TavilySearch
+
 from data import sample_data
+from services.news_fetcher import fetch_news
 
 def searchOnlineNewsNode(state:GeneralState):
     topic = state["topic"]
-    # tool = TavilySearch(max_results=5, topic="news", time_range="day",)
-    # results = tool.invoke({"query":topic})
-    # search_result=results["results"]
+    context = fetch_news(topic=topic)
     
     # formatted_search_docs = "\n\n---\n\n".join([
     #     f'<Document href="{doc['url']}" published_date="{doc['published_date']}"/>\n{doc['content']}\n</Document>'
     #     for doc in search_result
     # ])
-    search_result = sample_data["results"]
-    context=[
-        {"title":doc["title"],"url":doc['url'], "published_date":doc['published_date'], "content":doc['content']}
-         for doc in search_result
-    ]
+    # search_result = sample_data["results"]
+
     return {"context":context}
 
 summarize_instructions = """
@@ -62,15 +58,15 @@ Your tasks are:
 from data import summary_data
 def summarizeNode(state:GeneralState):
 
-    # for item in state["context"]:
-    #     system_message = summarize_instructions.format(summary=item["content"])
-    #     summary=llm.invoke([SystemMessage(content=system_message)])
-    #     item["revised_content"]=summary 
+    for item in state["context"]:
+        system_message = summarize_instructions.format(summary=item["content"])
+        summary=llm.invoke([SystemMessage(content=system_message)])
+        item["revised_content"]=summary.content 
     
-    for idx, item in enumerate(state["context"]):
-        item["revised_content"] = summary_data[idx]
+    # for idx, item in enumerate(state["context"]):
+    #     item["revised_content"] = summary_data[idx]
 
-    pass
+    # pass
 
 def outputNode(state:GeneralState):
     combined_output = ""
@@ -79,7 +75,8 @@ def outputNode(state:GeneralState):
         published_date = item.get("published_date","")
         url=item.get("url","")
         revised = item.get("revised_content","")
-        combined_output += title+"\n\n"+url+"\n\n"+published_date+"\n\n"+revised 
+        combined_output += "Title: "+title+"\n\n"+url+"\n\n"+published_date+"\n\n"+revised+"\n\n"
+
     return {"output":combined_output}
 
 
@@ -123,4 +120,4 @@ tool_builder.add_edge("sendEmail", END)
 tool_graph = tool_builder.compile()
 
 response = tool_graph.invoke({})
-print(response["output"])
+# print(response["output"])
